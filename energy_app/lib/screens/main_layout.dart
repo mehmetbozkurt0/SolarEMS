@@ -1,3 +1,6 @@
+import 'package:energy_app/screens/ai_screen.dart';
+import 'package:energy_app/screens/analysis_screen.dart';
+import 'package:energy_app/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import 'package:energy_app/screens/dashboard_screen.dart';
@@ -15,9 +18,9 @@ class _MainLayoutState extends State<MainLayout> {
   // Diğer sayfalar yapıldıkça buraya eklenecek
   final List<Widget> _screens = [
     const DashboardScreen(),
-    const Center(child: Text("Analiz Ekranı (Yapım Aşamasında)", style: TextStyle(color: Colors.white))),
-    const Center(child: Text("AI Optimizasyon (Yapım Aşamasında)", style: TextStyle(color: Colors.white))),
-    const Center(child: Text("Ayarlar", style: TextStyle(color: Colors.white))),
+    const AnalysisScreen(),
+    const AIOptimizationScreen(),
+    const SettingsScreen()
   ];
 
   @override
@@ -35,7 +38,7 @@ class _MainLayoutState extends State<MainLayout> {
               selectedIndex: _selectedIndex,
               onItemSelected: (index) => setState(() => _selectedIndex = index),
             ),
-          
+
           // ANA İÇERİK (Arkaplan Süslemeli)
           Expanded(
             child: Stack(
@@ -63,7 +66,7 @@ class _MainLayoutState extends State<MainLayout> {
                     ),
                   ),
                 ),
-                
+
                 // Sayfa İçeriği
                 Padding(
                   padding: EdgeInsets.all(isDesktop ? 32.0 : 16.0),
@@ -78,9 +81,9 @@ class _MainLayoutState extends State<MainLayout> {
       bottomNavigationBar: isDesktop
           ? null
           : _GlassBottomBar(
-              selectedIndex: _selectedIndex,
-              onItemSelected: (index) => setState(() => _selectedIndex = index),
-            ),
+        selectedIndex: _selectedIndex,
+        onItemSelected: (index) => setState(() => _selectedIndex = index),
+      ),
     );
   }
 }
