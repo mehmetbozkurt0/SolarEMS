@@ -2,152 +2,175 @@ import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import '../widgets/glass_container.dart';
 
-class AnalysisScreen extends StatelessWidget {
+// Analiz ve Raporlama ekranı için zaman periyodu enum'u
+enum AnalysisTimePeriod { daily, weekly, monthly }
+
+class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
 
+  // GÜNCELLEME: Rapor listesi 'static' yapıldı.
+  // Böylece Dashboard sayfasından buraya yeni rapor eklenebilir.
+  static List<Map<String, String>> globalReports = [
+    {
+      'title': 'Ekim 2023 Üretim Raporu',
+      'date': '31.10.2023',
+      'type': 'PDF',
+      'size': '1.4 MB',
+    },
+    {
+      'title': 'Eylül 2023 Performans',
+      'date': '30.09.2023',
+      'type': 'XLSX',
+      'size': '2.1 MB',
+    },
+    {
+      'title': 'Q3 2023 Enerji Özeti',
+      'date': '30.09.2023',
+      'type': 'PDF',
+      'size': '3.5 MB',
+    },
+  ];
+
   @override
-  Widget build(BuildContext context) {
-    var width = MediaQuery.of(context).size.width;
-    bool isDesktop = width > 900;
+  State<AnalysisScreen> createState() => _AnalysisScreenState();
+}
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("Enerji Analizi & Raporlama", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
+class _AnalysisScreenState extends State<AnalysisScreen> {
+  AnalysisTimePeriod _selectedPeriod = AnalysisTimePeriod.daily;
 
-          // TARİH SEÇİCİ VE FİLTRELER
-          Row(
-            children: [
-              _buildFilterButton("Günlük", true),
-              const SizedBox(width: 10),
-              _buildFilterButton("Haftalık", false),
-              const SizedBox(width: 10),
-              _buildFilterButton("Aylık", false),
-            ],
+  // Rapor Oluşturma Simülasyonu
+  void _generateReport() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => const Center(
+            child: CircularProgressIndicator(color: AppColors.neonBlue),
           ),
-          const SizedBox(height: 30),
+    );
 
-          // İSTATİSTİK GRID YAPISI
-          if (isDesktop)
-            Row(
-              children: [
-                Expanded(child: _buildStatCard("Toplam Üretim", "124 kWh", Icons.wb_sunny, AppColors.neonGreen)),
-                const SizedBox(width: 20),
-                Expanded(child: _buildStatCard("Toplam Tüketim", "86 kWh", Icons.home, AppColors.neonRed)),
-                const SizedBox(width: 20),
-                Expanded(child: _buildStatCard("Net Kazanç", "₺420.50", Icons.account_balance_wallet, AppColors.neonBlue)),
-              ],
-            )
-          else
-            Column(
-              children: [
-                _buildStatCard("Toplam Üretim", "124 kWh", Icons.wb_sunny, AppColors.neonGreen),
-                const SizedBox(height: 15),
-                _buildStatCard("Toplam Tüketim", "86 kWh", Icons.home, AppColors.neonRed),
-                const SizedBox(height: 15),
-                _buildStatCard("Net Kazanç", "₺420.50", Icons.account_balance_wallet, AppColors.neonBlue),
-              ],
-            ),
+    Future.delayed(const Duration(seconds: 2), () {
+      Navigator.pop(context);
+      setState(() {
+        final now = DateTime.now();
+        // Listeye statik referans üzerinden erişiyoruz
+        AnalysisScreen.globalReports.insert(0, {
+          'title': 'Anlık Üretim Raporu (${now.hour}:${now.minute})',
+          'date': '${now.day}.${now.month}.${now.year}',
+          'type': 'PDF',
+          'size': '0.8 MB',
+        });
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Rapor başarıyla oluşturuldu ve listeye eklendi."),
+          backgroundColor: AppColors.neonGreen,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    });
+  }
 
-          const SizedBox(height: 30),
+  // --- MOCK DATA FONKSİYONLARI ---
+  Map<String, List<String>> _getStatData() {
+    switch (_selectedPeriod) {
+      case AnalysisTimePeriod.daily:
+        return {
+          'Üretim': ["Toplam Üretim", "124 kWh", "+12% Günlük"],
+          'Tüketim': ["Toplam Tüketim", "86 kWh", "-5% Günlük"],
+          'Kazanç': ["Net Kazanç", "₺420.50", "₺150 Satış"],
+        };
+      case AnalysisTimePeriod.weekly:
+        return {
+          'Üretim': ["Toplam Üretim", "860 kWh", "+8% Haftalık"],
+          'Tüketim': ["Toplam Tüketim", "540 kWh", "+10% Haftalık"],
+          'Kazanç': ["Net Kazanç", "₺2,800.00", "₺950 Satış"],
+        };
+      case AnalysisTimePeriod.monthly:
+        return {
+          'Üretim': ["Toplam Üretim", "3.5 MWh", "-2% Aylık"],
+          'Tüketim': ["Toplam Tüketim", "2.2 MWh", "-1% Aylık"],
+          'Kazanç': ["Net Kazanç", "₺11,500.00", "₺3,800 Satış"],
+        };
+    }
+  }
 
-          // DETAYLI GRAFİK (Mockup)
-          GlassContainer(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Üretim vs Tüketim Dengesi", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 30),
-                Container(
-                  height: 300,
-                  width: double.infinity,
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      // Basit Grafik Çubukları (Üretim: Yeşil, Tüketim: Kırmızı)
-                      _buildDoubleBar(0.4, 0.3, "Pzt"),
-                      _buildDoubleBar(0.6, 0.4, "Sal"),
-                      _buildDoubleBar(0.8, 0.5, "Çar"),
-                      _buildDoubleBar(0.5, 0.7, "Per"), // Tüketim fazla
-                      _buildDoubleBar(0.7, 0.4, "Cum"),
-                      _buildDoubleBar(0.9, 0.3, "Cmt"),
-                      _buildDoubleBar(0.8, 0.4, "Paz"),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.circle, size: 10, color: AppColors.neonGreen), SizedBox(width: 5),
-                    Text("Üretim", style: TextStyle(color: Colors.white54)),
-                    SizedBox(width: 20),
-                    Icon(Icons.circle, size: 10, color: AppColors.neonRed), SizedBox(width: 5),
-                    Text("Tüketim", style: TextStyle(color: Colors.white54)),
-                  ],
-                )
-              ],
-            ),
+  List<Map<String, dynamic>> _getChartData() {
+    switch (_selectedPeriod) {
+      case AnalysisTimePeriod.daily:
+        return const [
+          {'prod': 0.4, 'cons': 0.3, 'label': "0-4h"},
+          {'prod': 0.6, 'cons': 0.4, 'label': "4-8h"},
+          {'prod': 0.8, 'cons': 0.5, 'label': "8-12h"},
+          {'prod': 0.5, 'cons': 0.7, 'label': "12-16h"},
+          {'prod': 0.7, 'cons': 0.4, 'label': "16-20h"},
+          {'prod': 0.9, 'cons': 0.3, 'label': "20-24h"},
+        ];
+      case AnalysisTimePeriod.weekly:
+        return const [
+          {'prod': 0.7, 'cons': 0.5, 'label': "Pzt"},
+          {'prod': 0.8, 'cons': 0.4, 'label': "Sal"},
+          {'prod': 0.5, 'cons': 0.7, 'label': "Çar"},
+          {'prod': 0.9, 'cons': 0.6, 'label': "Per"},
+          {'prod': 0.6, 'cons': 0.4, 'label': "Cum"},
+          {'prod': 0.7, 'cons': 0.8, 'label': "Cmt"},
+          {'prod': 0.8, 'cons': 0.5, 'label': "Paz"},
+        ];
+      case AnalysisTimePeriod.monthly:
+        return const [
+          {'prod': 0.8, 'cons': 0.6, 'label': "Haf 1"},
+          {'prod': 0.7, 'cons': 0.5, 'label': "Haf 2"},
+          {'prod': 0.9, 'cons': 0.7, 'label': "Haf 3"},
+          {'prod': 0.6, 'cons': 0.4, 'label': "Haf 4"},
+        ];
+    }
+  }
+
+  // --- WIDGET YARDIMCI FONKSİYONLARI ---
+  Widget _buildFilterButton(AnalysisTimePeriod period, String text) {
+    bool isSelected = _selectedPeriod == period;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedPeriod = period;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.neonBlue : Colors.transparent,
+          border: Border.all(
+            color: isSelected ? AppColors.neonBlue : Colors.white24,
           ),
-
-          const SizedBox(height: 30),
-
-          // SOSYAL ETKİ & ROZETLER (İŞL.09 & İŞL.07)
-          const Text("Çevresel Etki & Başarılar", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 15),
-          GlassContainer(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                const Icon(Icons.forest, color: AppColors.neonGreen, size: 40),
-                const SizedBox(width: 20),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Karbon Ayak İzi", style: TextStyle(color: Colors.white60)),
-                      Text("Bu ay 12 Ağaç Kurtardınız! 🌳", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(20)),
-                  child: const Text("Rozetleri Gör >", style: TextStyle(color: Colors.white)),
-                )
-              ],
-            ),
-          )
-        ],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isSelected ? Colors.black : Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildFilterButton(String text, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: isSelected ? AppColors.neonBlue : Colors.transparent,
-        border: Border.all(color: isSelected ? AppColors.neonBlue : Colors.white24),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(text, style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontWeight: FontWeight.bold)),
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return GlassContainer(
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(width: 15),
@@ -156,9 +179,16 @@ class AnalysisScreen extends StatelessWidget {
             children: [
               Text(title, style: const TextStyle(color: Colors.white54)),
               const SizedBox(height: 5),
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -171,14 +201,325 @@ class AnalysisScreen extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Container(width: 10, height: 150 * prodHeight, color: AppColors.neonGreen.withOpacity(0.8)),
+            Container(
+              width: 10,
+              height: 150 * prodHeight,
+              color: AppColors.neonGreen.withValues(alpha: 0.8),
+            ),
             const SizedBox(width: 4),
-            Container(width: 10, height: 150 * consHeight, color: AppColors.neonRed.withOpacity(0.8)),
+            Container(
+              width: 10,
+              height: 150 * consHeight,
+              color: AppColors.neonRed.withValues(alpha: 0.8),
+            ),
           ],
         ),
         const SizedBox(height: 10),
         Text(day, style: const TextStyle(color: Colors.white38)),
       ],
+    );
+  }
+
+  Widget _buildReportItem(Map<String, String> report) {
+    IconData fileIcon = Icons.insert_drive_file;
+    Color fileColor = Colors.white;
+
+    if (report['type'] == 'PDF') {
+      fileIcon = Icons.picture_as_pdf;
+      fileColor = Colors.redAccent;
+    } else if (report['type'] == 'XLSX') {
+      fileIcon = Icons.table_chart;
+      fileColor = Colors.greenAccent;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Icon(fileIcon, color: fileColor, size: 30),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  report['title']!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "${report['date']} • ${report['size']}",
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.download_rounded, color: AppColors.neonBlue),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("${report['title']} indiriliyor...")),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var width = MediaQuery.of(context).size.width;
+    bool isDesktop = width > 900;
+    final statData = _getStatData();
+    final chartData = _getChartData();
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Enerji Analizi & Raporlama",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          Row(
+            children: [
+              _buildFilterButton(AnalysisTimePeriod.daily, "Günlük"),
+              const SizedBox(width: 10),
+              _buildFilterButton(AnalysisTimePeriod.weekly, "Haftalık"),
+              const SizedBox(width: 10),
+              _buildFilterButton(AnalysisTimePeriod.monthly, "Aylık"),
+            ],
+          ),
+          const SizedBox(height: 30),
+
+          if (isDesktop)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    statData['Üretim']![0],
+                    statData['Üretim']![1],
+                    Icons.wb_sunny,
+                    AppColors.neonGreen,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: _buildStatCard(
+                    statData['Tüketim']![0],
+                    statData['Tüketim']![1],
+                    Icons.home,
+                    AppColors.neonRed,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: _buildStatCard(
+                    statData['Kazanç']![0],
+                    statData['Kazanç']![1],
+                    Icons.account_balance_wallet,
+                    AppColors.neonBlue,
+                  ),
+                ),
+              ],
+            )
+          else
+            Column(
+              children: [
+                _buildStatCard(
+                  statData['Üretim']![0],
+                  statData['Üretim']![1],
+                  Icons.wb_sunny,
+                  AppColors.neonGreen,
+                ),
+                const SizedBox(height: 15),
+                _buildStatCard(
+                  statData['Tüketim']![0],
+                  statData['Tüketim']![1],
+                  Icons.home,
+                  AppColors.neonRed,
+                ),
+                const SizedBox(height: 15),
+                _buildStatCard(
+                  statData['Kazanç']![0],
+                  statData['Kazanç']![1],
+                  Icons.account_balance_wallet,
+                  AppColors.neonBlue,
+                ),
+              ],
+            ),
+
+          const SizedBox(height: 30),
+
+          GlassContainer(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Üretim vs Tüketim Dengesi",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 30),
+                Container(
+                  height: 300,
+                  width: double.infinity,
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children:
+                        chartData.map((data) {
+                          return _buildDoubleBar(
+                            data['prod'] as double,
+                            data['cons'] as double,
+                            data['label'] as String,
+                          );
+                        }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.circle, size: 10, color: AppColors.neonGreen),
+                    SizedBox(width: 5),
+                    Text("Üretim", style: TextStyle(color: Colors.white54)),
+                    SizedBox(width: 20),
+                    Icon(Icons.circle, size: 10, color: AppColors.neonRed),
+                    SizedBox(width: 5),
+                    Text("Tüketim", style: TextStyle(color: Colors.white54)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Raporlarım (İŞL.03)",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _generateReport,
+                icon: const Icon(Icons.add, color: AppColors.neonBlue),
+                label: const Text(
+                  "Yeni Rapor Oluştur",
+                  style: TextStyle(color: AppColors.neonBlue),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: AppColors.neonBlue.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+
+          // GÜNCELLEME: Statik globalReports listesini kullanıyor
+          GlassContainer(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children:
+                  AnalysisScreen.globalReports.isEmpty
+                      ? [
+                        const Text(
+                          "Henüz rapor oluşturulmadı.",
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ]
+                      : AnalysisScreen.globalReports
+                          .map((report) => _buildReportItem(report))
+                          .toList(),
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
+          const Text(
+            "Çevresel Etki & Başarılar",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 15),
+          GlassContainer(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                const Icon(Icons.forest, color: AppColors.neonGreen, size: 40),
+                const SizedBox(width: 20),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Karbon Ayak İzi",
+                        style: TextStyle(color: Colors.white60),
+                      ),
+                      Text(
+                        "Bu ay 12 Ağaç Kurtardınız! 🌳",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    "Rozetleri Gör >",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+        ],
+      ),
     );
   }
 }

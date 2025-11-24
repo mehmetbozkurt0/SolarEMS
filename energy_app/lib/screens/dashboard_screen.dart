@@ -18,7 +18,7 @@ class DashboardScreen extends StatelessWidget {
           const HeaderSection(),
           const SizedBox(height: 30),
 
-          // KARTLAR (Responsive)
+          // KARTLAR (Responsive) - EnergyCardType eklendi
           if (isDesktop)
             const Row(
               children: [
@@ -29,6 +29,7 @@ class DashboardScreen extends StatelessWidget {
                     icon: Icons.wb_sunny_rounded,
                     color: AppColors.neonGreen,
                     subtitle: "+%12 verim artışı",
+                    cardType: EnergyCardType.production, // Yeni
                   ),
                 ),
                 SizedBox(width: 20),
@@ -39,6 +40,7 @@ class DashboardScreen extends StatelessWidget {
                     icon: Icons.home_filled,
                     color: AppColors.neonRed,
                     subtitle: "Klima aktif",
+                    cardType: EnergyCardType.consumption, // Yeni
                   ),
                 ),
                 SizedBox(width: 20),
@@ -49,6 +51,7 @@ class DashboardScreen extends StatelessWidget {
                     icon: Icons.bolt,
                     color: AppColors.neonBlue,
                     subtitle: "₺42.50 Günlük Kazanç",
+                    cardType: EnergyCardType.gridSale, // Yeni
                   ),
                 ),
               ],
@@ -62,6 +65,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.wb_sunny_rounded,
                   color: AppColors.neonGreen,
                   subtitle: "+%12 verim artışı",
+                  cardType: EnergyCardType.production, // Yeni
                 ),
                 SizedBox(height: 16),
                 EnergyStatusCard(
@@ -70,6 +74,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.home_filled,
                   color: AppColors.neonRed,
                   subtitle: "Klima aktif",
+                  cardType: EnergyCardType.consumption, // Yeni
                 ),
                 SizedBox(height: 16),
                 EnergyStatusCard(
@@ -78,30 +83,31 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.bolt,
                   color: AppColors.neonBlue,
                   subtitle: "₺42.50 Günlük Kazanç",
+                  cardType: EnergyCardType.gridSale, // Yeni
                 ),
               ],
             ),
 
           const SizedBox(height: 30),
 
-          // GRAFİK VE AI BÖLÜMÜ - const'lar kaldırıldı.
+          // GRAFİK VE AI BÖLÜMÜ
           LayoutBuilder(
             builder: (context, constraints) {
               if (isDesktop) {
-                return Row(
+                return const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Expanded(flex: 2, child: ProductionChartSection()),
-                    const SizedBox(width: 20),
-                    const Expanded(flex: 1, child: AIRecommendationCard()),
+                    Expanded(flex: 2, child: ProductionChartSection()),
+                    SizedBox(width: 20),
+                    Expanded(flex: 1, child: AIRecommendationCard()),
                   ],
                 );
               } else {
-                return Column(
+                return const Column(
                   children: [
-                    const ProductionChartSection(),
-                    const SizedBox(height: 20),
-                    const AIRecommendationCard(),
+                    ProductionChartSection(),
+                    SizedBox(height: 20),
+                    AIRecommendationCard(),
                   ],
                 );
               }
