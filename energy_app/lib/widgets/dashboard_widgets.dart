@@ -41,17 +41,34 @@ class EnergyStatusCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          Text(title, style: const TextStyle(color: Colors.white60, fontSize: 14)),
+          Text(
+            title,
+            style: const TextStyle(color: Colors.white60, fontSize: 14),
+          ),
           const SizedBox(height: 5),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 10),
           Row(
             children: [
               Icon(Icons.trending_up, color: color, size: 16),
               const SizedBox(width: 5),
-              Text(subtitle, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -81,7 +98,14 @@ class AIRecommendationCard extends StatelessWidget {
             children: [
               Icon(Icons.auto_awesome, color: AppColors.neonBlue),
               SizedBox(width: 10),
-              Text("AI Optimizasyon", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                "AI Optimizasyon",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -98,23 +122,118 @@ class AIRecommendationCard extends StatelessWidget {
                 backgroundColor: AppColors.neonBlue,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: const Text("Öneriyi Uygula", style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                "Öneriyi Uygula",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
-          )
+          ),
         ],
       ),
     );
   }
 }
 
-// 3. GRAFİK BÖLÜMÜ
-class ProductionChartSection extends StatelessWidget {
+// Yeni: Zaman Periyodu Enum'u
+enum TimePeriod { daily, weekly, monthly }
+
+// 3. GRAFİK BÖLÜMÜ (Stateful Widget olarak güncellendi)
+class ProductionChartSection extends StatefulWidget {
   const ProductionChartSection({super.key});
 
   @override
+  State<ProductionChartSection> createState() => _ProductionChartSectionState();
+}
+
+class _ProductionChartSectionState extends State<ProductionChartSection> {
+  // Varsayılan olarak günlük seçili
+  TimePeriod _selectedPeriod = TimePeriod.daily;
+
+  // Mock data yapısı: {label: String, height: double (0.0 - 1.0), isHigh: bool}
+  List<Map<String, dynamic>> _getChartData() {
+    switch (_selectedPeriod) {
+      case TimePeriod.daily:
+        // Saatlik Veri (Son 24s)
+        return [
+          {'label': "00:00", 'height': 0.4, 'isHigh': false},
+          {'label': "04:00", 'height': 0.3, 'isHigh': false},
+          {'label': "08:00", 'height': 0.6, 'isHigh': true},
+          {'label': "12:00", 'height': 0.9, 'isHigh': true},
+          {'label': "16:00", 'height': 0.7, 'isHigh': true},
+          {'label': "20:00", 'height': 0.5, 'isHigh': false},
+          {'label': "23:59", 'height': 0.4, 'isHigh': false},
+        ];
+      case TimePeriod.weekly:
+        // Günlük Veri (Son 7 Gün)
+        return [
+          {'label': "Pzt", 'height': 0.6, 'isHigh': true},
+          {'label': "Sal", 'height': 0.7, 'isHigh': true},
+          {'label': "Çar", 'height': 0.8, 'isHigh': true},
+          {'label': "Per", 'height': 0.5, 'isHigh': false},
+          {'label': "Cum", 'height': 0.9, 'isHigh': true},
+          {'label': "Cmt", 'height': 0.7, 'isHigh': true},
+          {'label': "Paz", 'height': 0.6, 'isHigh': true},
+        ];
+      case TimePeriod.monthly:
+        // Haftalık Veri (Son 4 Hafta)
+        return [
+          {'label': "Hafta 1", 'height': 0.7, 'isHigh': true},
+          {'label': "Hafta 2", 'height': 0.8, 'isHigh': true},
+          {'label': "Hafta 3", 'height': 0.6, 'isHigh': true},
+          {'label': "Hafta 4", 'height': 0.9, 'isHigh': true},
+        ];
+    }
+  }
+
+  String _getTitle() {
+    switch (_selectedPeriod) {
+      case TimePeriod.daily:
+        return "Enerji Akışı (Son 24s)";
+      case TimePeriod.weekly:
+        return "Enerji Akışı (Son 7 Gün)";
+      case TimePeriod.monthly:
+        return "Enerji Akışı (Son 4 Hafta)";
+    }
+  }
+
+  Widget _buildFilterButton(TimePeriod period, String label) {
+    bool isSelected = _selectedPeriod == period;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedPeriod = period;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? AppColors.neonBlue.withOpacity(0.2)
+                  : Colors.transparent,
+          border: Border.all(
+            color: isSelected ? AppColors.neonBlue : Colors.white24,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? AppColors.neonBlue : Colors.white,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final chartData = _getChartData();
     return GlassContainer(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -123,19 +242,22 @@ class ProductionChartSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Enerji Akışı (Son 24s)", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white24),
-                  borderRadius: BorderRadius.circular(20),
+              Text(
+                _getTitle(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: const Row(
-                  children: [
-                    Text("Günlük", style: TextStyle(color: Colors.white, fontSize: 12)),
-                    Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 16),
-                  ],
-                ),
+              ),
+              Row(
+                children: [
+                  _buildFilterButton(TimePeriod.daily, "Günlük"),
+                  const SizedBox(width: 8),
+                  _buildFilterButton(TimePeriod.weekly, "Haftalık"),
+                  const SizedBox(width: 8),
+                  _buildFilterButton(TimePeriod.monthly, "Aylık"),
+                ],
               ),
             ],
           ),
@@ -145,15 +267,14 @@ class ProductionChartSection extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _buildBar(height: 0.4, label: "00:00"),
-                _buildBar(height: 0.3, label: "04:00"),
-                _buildBar(height: 0.6, label: "08:00", isHigh: true),
-                _buildBar(height: 0.9, label: "12:00", isHigh: true),
-                _buildBar(height: 0.7, label: "16:00", isHigh: true),
-                _buildBar(height: 0.5, label: "20:00"),
-                _buildBar(height: 0.4, label: "23:59"),
-              ],
+              children:
+                  chartData.map((data) {
+                    return _buildBar(
+                      height: data['height'],
+                      label: data['label'],
+                      isHigh: data['isHigh'],
+                    );
+                  }).toList(),
             ),
           ),
         ],
@@ -161,7 +282,12 @@ class ProductionChartSection extends StatelessWidget {
     );
   }
 
-  Widget _buildBar({required double height, required String label, bool isHigh = false}) {
+  Widget _buildBar({
+    required double height,
+    required String label,
+    bool isHigh = false,
+  }) {
+    // Existing _buildBar logic remains the same.
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -173,14 +299,21 @@ class ProductionChartSection extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
-              colors: isHigh 
-                ? [AppColors.neonGreen.withOpacity(0.3), AppColors.neonGreen]
-                : [Colors.white10, Colors.white24],
+              colors:
+                  isHigh
+                      ? [
+                        AppColors.neonGreen.withOpacity(0.3),
+                        AppColors.neonGreen,
+                      ]
+                      : [Colors.white10, Colors.white24],
             ),
           ),
         ),
         const SizedBox(height: 10),
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white38, fontSize: 10),
+        ),
       ],
     );
   }
@@ -193,7 +326,13 @@ class LogListItem extends StatelessWidget {
   final String type;
   final String amount;
 
-  const LogListItem({super.key, required this.time, required this.message, required this.type, required this.amount});
+  const LogListItem({
+    super.key,
+    required this.time,
+    required this.message,
+    required this.type,
+    required this.amount,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -201,9 +340,18 @@ class LogListItem extends StatelessWidget {
     IconData typeIcon = Icons.info;
 
     switch (type) {
-      case 'AI': typeColor = AppColors.neonBlue; typeIcon = Icons.auto_awesome; break;
-      case 'WARN': typeColor = AppColors.neonRed; typeIcon = Icons.warning_amber_rounded; break;
-      case 'SELL': typeColor = AppColors.neonGreen; typeIcon = Icons.attach_money; break;
+      case 'AI':
+        typeColor = AppColors.neonBlue;
+        typeIcon = Icons.auto_awesome;
+        break;
+      case 'WARN':
+        typeColor = AppColors.neonRed;
+        typeIcon = Icons.warning_amber_rounded;
+        break;
+      case 'SELL':
+        typeColor = AppColors.neonGreen;
+        typeIcon = Icons.attach_money;
+        break;
     }
 
     return Container(
@@ -229,13 +377,22 @@ class LogListItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(message, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                Text(
+                  message,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
                 const SizedBox(height: 4),
-                Text(time, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                Text(
+                  time,
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                ),
               ],
             ),
           ),
-          Text(amount, style: TextStyle(color: typeColor, fontWeight: FontWeight.bold)),
+          Text(
+            amount,
+            style: TextStyle(color: typeColor, fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );
@@ -254,17 +411,40 @@ class HeaderSection extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Merhaba, Ahmet Bey", style: TextStyle(color: Colors.white54, fontSize: 14)),
+            const Text(
+              "Merhaba, Ahmet Bey",
+              style: TextStyle(color: Colors.white54, fontSize: 14),
+            ),
             const SizedBox(height: 5),
             Row(
               children: [
-                const Text("Ev Enerji Durumu", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                const Text(
+                  "Ev Enerji Durumu",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(width: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: AppColors.neonGreen.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                  child: const Text("AKTİF", style: TextStyle(color: AppColors.neonGreen, fontSize: 10, fontWeight: FontWeight.bold)),
-                )
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.neonGreen.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    "AKTİF",
+                    style: TextStyle(
+                      color: AppColors.neonGreen,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
@@ -273,7 +453,7 @@ class HeaderSection extends StatelessWidget {
           backgroundColor: Colors.white10,
           radius: 24,
           child: Icon(Icons.notifications_outlined, color: Colors.white),
-        )
+        ),
       ],
     );
   }
