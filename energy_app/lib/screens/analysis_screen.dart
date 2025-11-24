@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import '../widgets/glass_container.dart';
-import 'battery_analysis_screen.dart'; // Yeni ekranı import ettik
+import 'battery_analysis_screen.dart';
+import '../core/api_service.dart'; // ApiService'i ekle
 
 // Analiz ve Raporlama ekranı için zaman periyodu enum'u
 enum AnalysisTimePeriod { daily, weekly, monthly }
@@ -9,7 +10,7 @@ enum AnalysisTimePeriod { daily, weekly, monthly }
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
 
-  // Rapor listesi static referans
+  // MOCK Raporlar listesi (Diğer yerlerde manuel rapor oluşturmak için kullanılıyor)
   static List<Map<String, String>> globalReports = [
     {
       'title': 'Ekim 2023 Üretim Raporu',
@@ -37,6 +38,36 @@ class AnalysisScreen extends StatefulWidget {
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
   AnalysisTimePeriod _selectedPeriod = AnalysisTimePeriod.daily;
+
+  // ML'den gelecek çevresel etki verisi
+  Map<String, dynamic>? _environmentalData;
+  bool _isDataLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEnvironmentalData();
+  }
+
+  Future<void> _fetchEnvironmentalData() async {
+    try {
+      final data = await ApiService().getEnvironmentalImpact();
+      if (mounted) {
+        setState(() {
+          _environmentalData = data;
+          _isDataLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isDataLoading = false);
+        // Hata durumunda bildirim gösterilebilir
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Çevresel etki verisi alınamadı.")),
+        );
+      }
+    }
+  }
 
   // Rapor Oluşturma Simülasyonu
   void _generateReport() {
@@ -70,7 +101,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     });
   }
 
-  // --- MOCK DATA ---
+  // --- MOCK DATA (ML API'sinde endpoint'i olmayan kısımlar) ---
   Map<String, List<String>> _getStatData() {
     switch (_selectedPeriod) {
       case AnalysisTimePeriod.daily:
@@ -95,6 +126,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   }
 
   List<Map<String, dynamic>> _getChartData() {
+    // BU KISIM NORMALDE ML CORE'DAN GELMELİDİR (DailyProductionChart gibi)
     switch (_selectedPeriod) {
       case AnalysisTimePeriod.daily:
         return const [
@@ -274,6 +306,112 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     );
   }
 
+  Widget _buildImpactRow(String title, String value, Color valueColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(color: Colors.white70)),
+          Text(
+            value,
+            style: TextStyle(color: valueColor, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnvironmentalCard() {
+    if (_isDataLoading) {
+      return GlassContainer(
+        padding: const EdgeInsets.all(20),
+        gradient: LinearGradient(
+          colors: [
+            AppColors.neonGreen.withOpacity(0.1),
+            AppColors.cardGradientEnd,
+          ],
+        ),
+        child: const Center(
+          child: SizedBox(
+            height: 50,
+            child: CircularProgressIndicator(color: AppColors.neonGreen),
+          ),
+        ),
+      );
+    }
+
+    final data = _environmentalData;
+    final totalTrees = data?['kurtarilan_agac'] ?? 0.0;
+
+    return GlassContainer(
+      padding: const EdgeInsets.all(20),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          AppColors.neonGreen.withValues(alpha: 0.15),
+          AppColors.cardGradientEnd,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.forest, color: AppColors.neonGreen, size: 40),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Önlenen CO₂ Salınımı",
+                      style: TextStyle(color: Colors.white60),
+                    ),
+                    Text(
+                      "Bu ay ${totalTrees.toStringAsFixed(0)} Ağaç Kurtardınız! 🌳",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  "Detaylar >",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildImpactRow(
+            "Toplam Temiz Enerji Üretimi",
+            "${data?['toplam_uretim_kwh']?.toStringAsFixed(2) ?? '0.00'} kWh",
+            AppColors.neonGreen,
+          ),
+          _buildImpactRow(
+            "Eşdeğer CO₂ Azalımı",
+            "${data?['onlenen_co2_kg']?.toStringAsFixed(2) ?? '0.00'} kg",
+            AppColors.neonGreen,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     var width = MediaQuery.of(context).size.width;
@@ -307,7 +445,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           ),
           const SizedBox(height: 30),
 
-          // İstatistikler
+          // İstatistikler (Mock)
           if (isDesktop)
             Row(
               children: [
@@ -367,66 +505,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
           const SizedBox(height: 30),
 
-          // YENİ EKLENEN: BATARYA ANALİZ BUTONU
-          InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const BatteryAnalysisScreen(),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(24),
-            child: GlassContainer(
-              padding: const EdgeInsets.all(20),
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.neonBlue.withValues(alpha: 0.1),
-                  AppColors.cardGradientEnd,
-                ],
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.battery_charging_full,
-                    color: AppColors.neonBlue,
-                    size: 30,
-                  ),
-                  SizedBox(width: 15),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Batarya Sistemleri & Sağlık",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          "3 Aktif Ünite • Doluluk Oranı %46",
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white38,
-                    size: 16,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
+          // YENİ DİNAMİK ÇEVRESEL ETKİ KARTI
+          _buildEnvironmentalCard(),
           const SizedBox(height: 30),
 
-          // Grafik
+          // Grafik (Mock)
           GlassContainer(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -477,7 +560,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
           const SizedBox(height: 30),
 
-          // Raporlar
+          // Raporlar (Mock)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -524,60 +607,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             ),
           ),
 
-          const SizedBox(height: 30),
-
-          // Sosyal Etki
-          const Text(
-            "Çevresel Etki & Başarılar",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 15),
-          GlassContainer(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                const Icon(Icons.forest, color: AppColors.neonGreen, size: 40),
-                const SizedBox(width: 20),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Karbon Ayak İzi",
-                        style: TextStyle(color: Colors.white60),
-                      ),
-                      Text(
-                        "Bu ay 12 Ağaç Kurtardınız! 🌳",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white10,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    "Rozetleri Gör >",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 30),
         ],
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import '../widgets/glass_container.dart';
+import '../core/api_service.dart'; // Eklendi
 
 class BatteryAnalysisScreen extends StatefulWidget {
   const BatteryAnalysisScreen({super.key});
@@ -10,60 +11,76 @@ class BatteryAnalysisScreen extends StatefulWidget {
 }
 
 class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
-  // Mock Batarya Verileri
-  final List<Map<String, dynamic>> _batteries = [
-    {
-      'id': 'bat-001',
-      'name': 'Ana Depolama (Tesla Powerwall)',
-      'chargeLevel': 0.78, // %78
-      'isActive': true,
-      'voltageLimit': 48.0, // Volt
-      'maxChargeLimit': 90.0, // %
-      'notifyLowBattery': true, // %20 altı bildirim
-      'status': 'Discharging (-1.2 kW)',
-      'temp': '24°C',
-    },
-    {
-      'id': 'bat-002',
-      'name': 'Yedek Ünite 1 (LG Chem)',
-      'chargeLevel': 0.45, // %45
-      'isActive': true,
-      'voltageLimit': 48.0,
-      'maxChargeLimit': 100.0,
-      'notifyLowBattery': true,
-      'status': 'Standby',
-      'temp': '21°C',
-    },
-    {
-      'id': 'bat-003',
-      'name': 'Yedek Ünite 2 (Eski Tip)',
-      'chargeLevel': 0.15, // %15 (Düşük!)
-      'isActive': false,
-      'voltageLimit': 24.0,
-      'maxChargeLimit': 80.0,
-      'notifyLowBattery': false,
-      'status': 'Offline',
-      'temp': '--',
-    },
-  ];
+  List<dynamic> _batteries = [];
+  bool _isLoading = true;
+  final ApiService _apiService = ApiService();
 
-  // Ayar Güncelleme Simülasyonu
-  void _updateBatterySetting(int index, String key, dynamic value) {
+  @override
+  void initState() {
+    super.initState();
+    _loadBatteries();
+  }
+
+  Future<void> _loadBatteries() async {
+    try {
+      final data = await _apiService.getBatteries();
+      if (mounted) {
+        setState(() {
+          _batteries = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      print("Batarya yükleme hatası: $e");
+    }
+  }
+
+  // Ayar Güncelleme (Backend API)
+  Future<void> _updateBatterySetting(
+    int index,
+    String key,
+    dynamic value,
+  ) async {
+    // Önce lokalde iyimser güncelleme (Optimistic UI Update)
+    final originalValue = _batteries[index][key];
     setState(() {
       _batteries[index][key] = value;
     });
 
-    // Eğer %20 altı bildirim açıldıysa kullanıcıya bilgi ver
-    if (key == 'notifyLowBattery' && value == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "${_batteries[index]['name']} için düşük şarj uyarısı açıldı.",
+    final batteryId = _batteries[index]['id'];
+
+    // API için gerekli settings objesini hazırla
+    // Python modeline uygun: isActive, voltageLimit, maxChargeLimit, notifyLowBattery
+    Map<String, dynamic> settings = {
+      'isActive': _batteries[index]['isActive'],
+      'voltageLimit': _batteries[index]['voltageLimit'],
+      'maxChargeLimit': _batteries[index]['maxChargeLimit'],
+      'notifyLowBattery': _batteries[index]['notifyLowBattery'],
+    };
+
+    try {
+      await _apiService.updateBatterySettings(batteryId, settings);
+
+      if (key == 'notifyLowBattery' && value == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "${_batteries[index]['name']} için düşük şarj uyarısı açıldı.",
+            ),
+            backgroundColor: AppColors.neonBlue,
+            duration: const Duration(seconds: 1),
           ),
-          backgroundColor: AppColors.neonBlue,
-          duration: const Duration(seconds: 1),
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      // Hata olursa geri al
+      setState(() {
+        _batteries[index][key] = originalValue;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Ayar güncellenemedi!")));
     }
   }
 
@@ -79,23 +96,26 @@ class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       backgroundColor: AppColors.background,
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _batteries.length,
-        itemBuilder: (context, index) {
-          final battery = _batteries[index];
-          return _buildBatteryCard(battery, index);
-        },
-      ),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _batteries.length,
+                itemBuilder: (context, index) {
+                  final battery = _batteries[index];
+                  return _buildBatteryCard(battery, index);
+                },
+              ),
     );
   }
 
   Widget _buildBatteryCard(Map<String, dynamic> battery, int index) {
-    // Renk belirleme (Şarj durumuna göre)
+    double chargeLevel = (battery['chargeLevel'] as num).toDouble();
     Color statusColor = AppColors.neonGreen;
-    if (battery['chargeLevel'] < 0.20)
+    if (chargeLevel < 0.20)
       statusColor = AppColors.neonRed;
-    else if (battery['chargeLevel'] < 0.50)
+    else if (chargeLevel < 0.50)
       statusColor = Colors.orange;
 
     return Padding(
@@ -105,7 +125,7 @@ class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Üst Kısım: İsim ve Switch
+            // Üst Kısım
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -154,18 +174,18 @@ class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Şarj Göstergesi (Progress Bar)
+            // Progress Bar
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "Doluluk: %${(battery['chargeLevel'] * 100).toInt()}",
+                  "Doluluk: %${(chargeLevel * 100).toInt()}",
                   style: TextStyle(
                     color: statusColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                if (battery['chargeLevel'] < 0.20)
+                if (chargeLevel < 0.20)
                   const Text(
                     "⚠️ Düşük Seviye",
                     style: TextStyle(
@@ -180,18 +200,17 @@ class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: LinearProgressIndicator(
-                value: battery['chargeLevel'],
+                value: chargeLevel,
                 backgroundColor: Colors.white10,
                 color: statusColor,
                 minHeight: 10,
               ),
             ),
-
             const SizedBox(height: 20),
             const Divider(color: Colors.white10),
             const SizedBox(height: 10),
 
-            // --- YÖNETİM AYARLARI ---
+            // Ayarlar
             const Text(
               "Ayarlar & Sınırlar",
               style: TextStyle(
@@ -201,7 +220,7 @@ class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
             ),
             const SizedBox(height: 10),
 
-            // 1. Voltaj Sınırı (Slider yerine +/- butonlu yapı veya Text)
+            // Voltaj
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -218,13 +237,11 @@ class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
                       ),
                       onPressed:
                           battery['isActive']
-                              ? () {
-                                _updateBatterySetting(
-                                  index,
-                                  'voltageLimit',
-                                  battery['voltageLimit'] - 1,
-                                );
-                              }
+                              ? () => _updateBatterySetting(
+                                index,
+                                'voltageLimit',
+                                battery['voltageLimit'] - 1,
+                              )
                               : null,
                     ),
                     Text(
@@ -241,13 +258,11 @@ class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
                       ),
                       onPressed:
                           battery['isActive']
-                              ? () {
-                                _updateBatterySetting(
-                                  index,
-                                  'voltageLimit',
-                                  battery['voltageLimit'] + 1,
-                                );
-                              }
+                              ? () => _updateBatterySetting(
+                                index,
+                                'voltageLimit',
+                                battery['voltageLimit'] + 1,
+                              )
                               : null,
                     ),
                   ],
@@ -255,7 +270,7 @@ class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
               ],
             ),
 
-            // 2. Maksimum Şarj Limiti (Slider)
+            // Max Charge Limit Slider
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -267,7 +282,7 @@ class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
                       style: TextStyle(color: Colors.white54),
                     ),
                     Text(
-                      "%${battery['maxChargeLimit'].toInt()}",
+                      "%${(battery['maxChargeLimit'] as num).toInt()}",
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -276,7 +291,7 @@ class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
                   ],
                 ),
                 Slider(
-                  value: battery['maxChargeLimit'],
+                  value: (battery['maxChargeLimit'] as num).toDouble(),
                   min: 50,
                   max: 100,
                   divisions: 10,
@@ -294,7 +309,7 @@ class _BatteryAnalysisScreenState extends State<BatteryAnalysisScreen> {
               ],
             ),
 
-            // 3. Düşük Şarj Bildirimi (<%20)
+            // Notification Switch
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

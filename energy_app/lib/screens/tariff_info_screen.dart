@@ -1,140 +1,72 @@
 import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import '../widgets/glass_container.dart';
+import '../core/api_service.dart'; // ApiService'i ekle
 
-class TariffInfoScreen extends StatelessWidget {
+class TariffInfoScreen extends StatefulWidget {
   const TariffInfoScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final now = TimeOfDay.now();
-    // Şu anki saati ondalık formata çevir (örn: 14:30 -> 14.5)
-    final currentHour = now.hour + (now.minute / 60.0);
+  State<TariffInfoScreen> createState() => _TariffInfoScreenState();
+}
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Tarife Bilgileri",
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: AppColors.background,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // BİLGİ KARTI
-            GlassContainer(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    color: AppColors.neonBlue,
-                    size: 30,
-                  ),
-                  const SizedBox(width: 15),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Aktif Tarife: Üç Zamanlı Mesken",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 5),
-                        Text(
-                          "Fiyatlar EPDK güncel birim fiyatlarına göre simüle edilmiştir. (Vergiler Dahil)",
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+class _TariffInfoScreenState extends State<TariffInfoScreen> {
+  // ML'den gelecek finansal özet verisi
+  Map<String, dynamic>? _financialData;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      final data = await ApiService().getFinancialSummary();
+      if (mounted) {
+        setState(() {
+          _financialData = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Finansal analiz verisi alınamadı.")),
+        );
+      }
+    }
+  }
+
+  Widget _buildSummaryRow(
+    String title,
+    String value,
+    Color valueColor, {
+    bool isBold = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.white54,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             ),
-            const SizedBox(height: 30),
-
-            const Text(
-              "Tarife Detayları",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 16 : 14,
             ),
-            const SizedBox(height: 15),
-
-            // T1: GÜNDÜZ (06:00 - 17:00)
-            _buildTariffCard(
-              title: "Gündüz (T1)",
-              timeRange: "06:00 - 17:00",
-              buyPrice: "2.45 ₺",
-              sellPrice: "2.10 ₺",
-              color: Colors.orange,
-              icon: Icons.wb_sunny,
-              isActive: currentHour >= 6 && currentHour < 17,
-            ),
-            const SizedBox(height: 15),
-
-            // T2: PUANT (17:00 - 22:00) - En Pahalı
-            _buildTariffCard(
-              title: "Puant (T2)",
-              timeRange: "17:00 - 22:00",
-              buyPrice: "3.85 ₺",
-              sellPrice: "3.50 ₺",
-              color: AppColors.neonRed,
-              icon: Icons.warning_amber_rounded,
-              isActive: currentHour >= 17 && currentHour < 22,
-              isExpensive: true, // Vurgulu gösterim
-            ),
-            const SizedBox(height: 15),
-
-            // T3: GECE (22:00 - 06:00) - En Ucuz
-            _buildTariffCard(
-              title: "Gece (T3)",
-              timeRange: "22:00 - 06:00",
-              buyPrice: "1.35 ₺",
-              sellPrice: "1.10 ₺",
-              color:
-                  AppColors
-                      .neonGreen, // Yeşil yerine ay ışığı rengi de olabilir ama ucuz olduğu için yeşil mantıklı
-              icon: Icons.nights_stay,
-              isActive: currentHour >= 22 || currentHour < 6,
-              isCheap: true, // Vurgulu gösterim
-            ),
-
-            const SizedBox(height: 30),
-
-            // İPUCU KARTI
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: AppColors.neonBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.neonBlue.withOpacity(0.3)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.lightbulb, color: AppColors.neonBlue),
-                  SizedBox(width: 15),
-                  Expanded(
-                    child: Text(
-                      "İpucu: Bataryalarınızı 'Gece' tarifesinde şarj edip, 'Puant' saatlerinde kullanarak tasarruf edebilirsiniz.",
-                      style: TextStyle(color: Colors.white70, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -151,11 +83,10 @@ class TariffInfoScreen extends StatelessWidget {
     bool isCheap = false,
   }) {
     return GlassContainer(
-      padding: const EdgeInsets.all(0), // İç padding'i özel ayarlayacağız
+      padding: const EdgeInsets.all(0),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          // Aktif tarife ise kenarlık rengiyle vurgula
           border: isActive ? Border.all(color: color, width: 2) : null,
           color: isActive ? color.withOpacity(0.05) : null,
         ),
@@ -305,6 +236,199 @@ class TariffInfoScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = TimeOfDay.now();
+    final currentHour = now.hour + (now.minute / 60.0);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          "Tarife Bilgileri",
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: AppColors.background,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      backgroundColor: AppColors.background,
+      body:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(color: AppColors.neonBlue),
+              )
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // YENİ EKLENEN: FİNANSAL SİMÜLASYON ÖZETİ
+                    if (_financialData != null) ...[
+                      const Text(
+                        "ML Destekli Finansal Simülasyon",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      GlassContainer(
+                        padding: const EdgeInsets.all(20),
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.neonBlue.withOpacity(0.1),
+                            AppColors.cardGradientEnd,
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            _buildSummaryRow(
+                              "Panel Öncesi Tahmini Fatura",
+                              "₺${_financialData!['toplam_eski']?.toStringAsFixed(2) ?? '0.00'}",
+                              Colors.white,
+                            ),
+                            _buildSummaryRow(
+                              "Panel Sonrası Tahmini Fatura",
+                              "₺${_financialData!['toplam_yeni']?.toStringAsFixed(2) ?? '0.00'}",
+                              Colors.white,
+                            ),
+                            const Divider(color: Colors.white10, height: 30),
+                            _buildSummaryRow(
+                              "TOPLAM YILLIK KAZANÇ/TASARRUF",
+                              "₺${_financialData!['kazanc']?.toStringAsFixed(2) ?? '0.00'}",
+                              AppColors.neonGreen,
+                              isBold: true,
+                            ),
+                            _buildSummaryRow(
+                              "Tasarruf Oranı",
+                              "%${_financialData!['tasarruf_yuzdesi']?.toStringAsFixed(1) ?? '0.0'}",
+                              AppColors.neonGreen,
+                              isBold: true,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                    ],
+                    // MEVCUT BİLGİ KARTI
+                    GlassContainer(
+                      padding: const EdgeInsets.all(20),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: AppColors.neonBlue,
+                            size: 30,
+                          ),
+                          SizedBox(width: 15),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Aktif Tarife: Üç Zamanlı Mesken",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 5),
+                                Text(
+                                  "Fiyatlar EPDK güncel birim fiyatlarına göre simüle edilmiştir. (Vergiler Dahil)",
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    const Text(
+                      "Tarife Detayları",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+
+                    // T1: GÜNDÜZ (06:00 - 17:00)
+                    _buildTariffCard(
+                      title: "Gündüz (T1)",
+                      timeRange: "06:00 - 17:00",
+                      buyPrice: "2.45 ₺",
+                      sellPrice: "2.10 ₺",
+                      color: Colors.orange,
+                      icon: Icons.wb_sunny,
+                      isActive: currentHour >= 6 && currentHour < 17,
+                    ),
+                    const SizedBox(height: 15),
+
+                    // T2: PUANT (17:00 - 22:00) - En Pahalı
+                    _buildTariffCard(
+                      title: "Puant (T2)",
+                      timeRange: "17:00 - 22:00",
+                      buyPrice: "3.85 ₺",
+                      sellPrice: "3.50 ₺",
+                      color: AppColors.neonRed,
+                      icon: Icons.warning_amber_rounded,
+                      isActive: currentHour >= 17 && currentHour < 22,
+                      isExpensive: true,
+                    ),
+                    const SizedBox(height: 15),
+
+                    // T3: GECE (22:00 - 06:00) - En Ucuz
+                    _buildTariffCard(
+                      title: "Gece (T3)",
+                      timeRange: "22:00 - 06:00",
+                      buyPrice: "1.35 ₺",
+                      sellPrice: "1.10 ₺",
+                      color: AppColors.neonGreen,
+                      icon: Icons.nights_stay,
+                      isActive: currentHour >= 22 || currentHour < 6,
+                      isCheap: true,
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // İPUCU KARTI
+                    Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: AppColors.neonBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.neonBlue.withOpacity(0.3),
+                        ),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.lightbulb, color: AppColors.neonBlue),
+                          SizedBox(width: 15),
+                          Expanded(
+                            child: Text(
+                              "İpucu: Bataryalarınızı 'Gece' tarifesinde şarj edip, 'Puant' saatlerinde kullanarak tasarruf edebilirsiniz.",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
     );
   }
 }

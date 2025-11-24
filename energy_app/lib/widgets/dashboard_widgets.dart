@@ -2,6 +2,7 @@ import 'package:energy_app/screens/ragional_comparison_screen.dart';
 import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import 'glass_container.dart';
+import '../core/api_service.dart'; // YENİ: ApiService eklendi
 
 // Ekranlar ve Servisler
 import '../screens/analysis_screen.dart';
@@ -17,7 +18,7 @@ enum EnergyCardType { production, consumption, gridSale }
 // Zaman Periyodu Enum'u
 enum TimePeriod { daily, weekly, monthly }
 
-// 1. ÖZET KARTLARI (EnergyStatusCard)
+// 1. ÖZET KARTLARI (EnergyStatusCard) - DEĞİŞMEDİ
 class EnergyStatusCard extends StatelessWidget {
   final String title;
   final String value;
@@ -151,9 +152,7 @@ class EnergyStatusCard extends StatelessWidget {
         else if (result == 'net_metering') {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const TariffInfoScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const TariffInfoScreen()),
           );
         }
         // 6. OPTİMİZASYON GEÇMİŞİ EKRANINA GİT (YENİ)
@@ -280,12 +279,64 @@ class EnergyStatusCard extends StatelessWidget {
   }
 }
 
-// 2. AI ÖNERİ KARTI
-class AIRecommendationCard extends StatelessWidget {
+// 2. AI ÖNERİ KARTI - GÜNCELLENDİ (API Bağlantısı)
+class AIRecommendationCard extends StatefulWidget {
   const AIRecommendationCard({super.key});
 
   @override
+  State<AIRecommendationCard> createState() => _AIRecommendationCardState();
+}
+
+class _AIRecommendationCardState extends State<AIRecommendationCard> {
+  Map<String, dynamic>? aiData;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAiData();
+  }
+
+  Future<void> _fetchAiData() async {
+    try {
+      final data = await ApiService().getAiRecommendation();
+      if (mounted) {
+        setState(() {
+          aiData = data;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          // Hata durumunda sessizce varsayılanı gösterebilir veya boş bırakabiliriz
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const GlassContainer(
+        padding: EdgeInsets.all(24.0),
+        child: Center(
+          child: CircularProgressIndicator(color: AppColors.neonBlue),
+        ),
+      );
+    }
+
+    if (aiData == null) {
+      return const GlassContainer(
+        padding: EdgeInsets.all(24.0),
+        child: Text(
+          "AI Önerisi şu an alınamıyor.",
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
+
     return GlassContainer(
       padding: const EdgeInsets.all(24.0),
       gradient: LinearGradient(
@@ -299,13 +350,13 @@ class AIRecommendationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.auto_awesome, color: AppColors.neonBlue),
-              SizedBox(width: 10),
+              const Icon(Icons.auto_awesome, color: AppColors.neonBlue),
+              const SizedBox(width: 10),
               Text(
-                "AI Optimizasyon",
-                style: TextStyle(
+                aiData!['title'] ?? "AI Optimizasyon",
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -314,10 +365,20 @@ class AIRecommendationCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          const Text(
-            "Yarın hava bulutlu olacak. Bataryayı gece tarifesinde (02:00 - 05:00) tam kapasite şarj etmeniz önerilir.",
-            style: TextStyle(color: Colors.white70, height: 1.5),
+          Text(
+            aiData!['message'] ?? "",
+            style: const TextStyle(color: Colors.white70, height: 1.5),
           ),
+          const SizedBox(height: 10),
+          // Eğer API'den 'estimated_gain' geliyorsa göster
+          if (aiData!['estimated_gain'] != null)
+            Text(
+              "Tahmini Kazanç: ₺${aiData!['estimated_gain']}",
+              style: const TextStyle(
+                color: AppColors.neonGreen,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
@@ -343,7 +404,7 @@ class AIRecommendationCard extends StatelessWidget {
   }
 }
 
-// 3. GRAFİK BÖLÜMÜ
+// 3. GRAFİK BÖLÜMÜ - GÜNCELLENDİ (API Bağlantısı)
 class ProductionChartSection extends StatefulWidget {
   const ProductionChartSection({super.key});
 
@@ -353,36 +414,53 @@ class ProductionChartSection extends StatefulWidget {
 
 class _ProductionChartSectionState extends State<ProductionChartSection> {
   TimePeriod _selectedPeriod = TimePeriod.daily;
+  List<dynamic> _chartData = [];
+  bool _isLoading = true;
 
-  List<Map<String, dynamic>> _getChartData() {
-    switch (_selectedPeriod) {
-      case TimePeriod.daily:
-        return const [
-          {'label': "00:00", 'height': 0.4, 'isHigh': false},
-          {'label': "04:00", 'height': 0.3, 'isHigh': false},
-          {'label': "08:00", 'height': 0.6, 'isHigh': true},
-          {'label': "12:00", 'height': 0.9, 'isHigh': true},
-          {'label': "16:00", 'height': 0.7, 'isHigh': true},
-          {'label': "20:00", 'height': 0.5, 'isHigh': false},
-          {'label': "23:59", 'height': 0.4, 'isHigh': false},
-        ];
-      case TimePeriod.weekly:
-        return const [
-          {'label': "Pzt", 'height': 0.6, 'isHigh': true},
-          {'label': "Sal", 'height': 0.7, 'isHigh': true},
-          {'label': "Çar", 'height': 0.8, 'isHigh': true},
-          {'label': "Per", 'height': 0.5, 'isHigh': false},
-          {'label': "Cum", 'height': 0.9, 'isHigh': true},
-          {'label': "Cmt", 'height': 0.7, 'isHigh': true},
-          {'label': "Paz", 'height': 0.6, 'isHigh': true},
-        ];
-      case TimePeriod.monthly:
-        return const [
-          {'label': "Hafta 1", 'height': 0.7, 'isHigh': true},
-          {'label': "Hafta 2", 'height': 0.8, 'isHigh': true},
-          {'label': "Hafta 3", 'height': 0.6, 'isHigh': true},
-          {'label': "Hafta 4", 'height': 0.9, 'isHigh': true},
-        ];
+  @override
+  void initState() {
+    super.initState();
+    _loadChartData();
+  }
+
+  Future<void> _loadChartData() async {
+    // Sadece Günlük için API yazdık, diğerleri için şimdilik mock veya boş dönebiliriz.
+    if (_selectedPeriod == TimePeriod.daily) {
+      try {
+        final data = await ApiService().getDailyProductionChart();
+        if (mounted) {
+          setState(() {
+            _chartData = data;
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } else {
+      // Mock veriler (Haftalık/Aylık için placeholder)
+      if (mounted) {
+        setState(() {
+          _chartData =
+              _selectedPeriod == TimePeriod.weekly
+                  ? [
+                    {'label': "Pzt", 'height': 0.6, 'is_high': true},
+                    {'label': "Sal", 'height': 0.7, 'is_high': true},
+                    {'label': "Çar", 'height': 0.8, 'is_high': true},
+                    {'label': "Per", 'height': 0.5, 'is_high': false},
+                    {'label': "Cum", 'height': 0.9, 'is_high': true},
+                    {'label': "Cmt", 'height': 0.7, 'is_high': true},
+                    {'label': "Paz", 'height': 0.6, 'is_high': true},
+                  ]
+                  : [
+                    {'label': "H1", 'height': 0.7, 'is_high': true},
+                    {'label': "H2", 'height': 0.8, 'is_high': true},
+                    {'label': "H3", 'height': 0.6, 'is_high': true},
+                    {'label': "H4", 'height': 0.9, 'is_high': true},
+                  ];
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -403,7 +481,9 @@ class _ProductionChartSectionState extends State<ProductionChartSection> {
       onTap: () {
         setState(() {
           _selectedPeriod = period;
+          _isLoading = true;
         });
+        _loadChartData();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -430,7 +510,6 @@ class _ProductionChartSectionState extends State<ProductionChartSection> {
 
   @override
   Widget build(BuildContext context) {
-    final chartData = _getChartData();
     return GlassContainer(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -459,21 +538,35 @@ class _ProductionChartSectionState extends State<ProductionChartSection> {
             ],
           ),
           const SizedBox(height: 30),
-          SizedBox(
-            height: 200,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children:
-                  chartData.map((data) {
-                    return _buildBar(
-                      height: data['height'] as double,
-                      label: data['label'] as String,
-                      isHigh: data['isHigh'] as bool,
-                    );
-                  }).toList(),
-            ),
-          ),
+          _isLoading
+              ? const SizedBox(
+                height: 200,
+                child: Center(child: CircularProgressIndicator()),
+              )
+              : SizedBox(
+                height: 200,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children:
+                      _chartData.map((data) {
+                        // API'den gelen field isimleri snake_case olabilir (örn: is_high)
+                        // Dart map yapımıza göre kontrol ediyoruz.
+                        final heightVal = (data['height'] as num).toDouble();
+                        final labelVal = data['label'] as String;
+                        // Python tarafında 'is_high', Dart tarafında 'isHigh' kullanmış olabiliriz.
+                        // İkisini de kontrol edelim:
+                        final isHighVal =
+                            data['is_high'] ?? data['isHigh'] ?? false;
+
+                        return _buildBar(
+                          height: heightVal,
+                          label: labelVal,
+                          isHigh: isHighVal,
+                        );
+                      }).toList(),
+                ),
+              ),
         ],
       ),
     );
@@ -515,7 +608,7 @@ class _ProductionChartSectionState extends State<ProductionChartSection> {
   }
 }
 
-// 4. LOG LİSTE ELEMANI
+// 4. LOG LİSTE ELEMANI - DEĞİŞMEDİ
 class LogListItem extends StatelessWidget {
   final String time;
   final String message;
@@ -595,7 +688,7 @@ class LogListItem extends StatelessWidget {
   }
 }
 
-// 5. HEADER (Merhaba Ahmet Bey kısmı)
+// 5. HEADER (Merhaba Ahmet Bey kısmı) - DEĞİŞMEDİ
 class HeaderSection extends StatelessWidget {
   const HeaderSection({super.key});
 
@@ -704,57 +797,69 @@ class HeaderSection extends StatelessWidget {
   }
 }
 
-// 6. ÜRETİM TAHMİN DİYALOĞU
-class ProductionForecastDialog extends StatelessWidget {
+// 6. ÜRETİM TAHMİN DİYALOĞU - DEĞİŞMEDİ
+
+// 6. ÜRETİM TAHMİN DİYALOĞU - YENİ (API Bağlantılı)
+class ProductionForecastDialog extends StatefulWidget {
   const ProductionForecastDialog({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> forecastData = [
-      {
-        'time': '14:00',
-        'value': '4.5 kW',
-        'efficiency': '98%',
-        'icon': Icons.wb_sunny,
-      },
-      {
-        'time': '15:00',
-        'value': '4.3 kW',
-        'efficiency': '96%',
-        'icon': Icons.wb_sunny,
-      },
-      {
-        'time': '16:00',
-        'value': '3.8 kW',
-        'efficiency': '92%',
-        'icon': Icons.wb_cloudy,
-      },
-      {
-        'time': '17:00',
-        'value': '2.5 kW',
-        'efficiency': '85%',
-        'icon': Icons.cloud,
-      },
-      {
-        'time': '18:00',
-        'value': '1.1 kW',
-        'efficiency': '70%',
-        'icon': Icons.wb_twilight,
-      },
-      {
-        'time': '19:00',
-        'value': '0.2 kW',
-        'efficiency': '40%',
-        'icon': Icons.nights_stay,
-      },
-      {
-        'time': '20:00',
-        'value': '0.0 kW',
-        'efficiency': '0%',
-        'icon': Icons.nights_stay,
-      },
-    ];
+  State<ProductionForecastDialog> createState() =>
+      _ProductionForecastDialogState();
+}
 
+class _ProductionForecastDialogState extends State<ProductionForecastDialog> {
+  List<dynamic>? _forecastData;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchForecast();
+  }
+
+  Future<void> _fetchForecast() async {
+    try {
+      final data = await ApiService().getDetailedForecast();
+      if (mounted) {
+        setState(() {
+          _forecastData = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          // Hata durumunda boş liste dönebiliriz.
+        });
+        // Kullanıcıya hata bildirimi gösterilebilir.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Tahmin yüklenirken hata oluştu: $e"),
+            backgroundColor: AppColors.neonRed,
+          ),
+        );
+      }
+    }
+  }
+
+  // İkon metin ismini, Material Design ikonuna çeviren yardımcı fonksiyon
+  IconData _getIconData(String iconName) {
+    switch (iconName) {
+      case 'wb_sunny':
+        return Icons.wb_sunny;
+      case 'wb_cloudy':
+        return Icons.wb_cloudy;
+      case 'nights_stay':
+        return Icons.nights_stay;
+      default:
+        return Icons.power_settings_new; // Varsayılan
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(20),
@@ -780,7 +885,7 @@ class ProductionForecastDialog extends StatelessWidget {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      "ML Modeli: Güneşli, 24°C",
+                      "ML Modeli: Tahmin Edilen Veriler",
                       style: TextStyle(color: Colors.white54, fontSize: 12),
                     ),
                   ],
@@ -794,6 +899,7 @@ class ProductionForecastDialog extends StatelessWidget {
             const SizedBox(height: 20),
             const Divider(color: Colors.white10),
 
+            // Tablo Başlıkları
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8.0),
               child: Row(
@@ -817,10 +923,7 @@ class ProductionForecastDialog extends StatelessWidget {
                     child: Text(
                       "Verim",
                       textAlign: TextAlign.right,
-                      style: TextStyle(
-                        color: Colors.white38,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.white38, fontSize: 12),
                     ),
                   ),
                 ],
@@ -828,60 +931,81 @@ class ProductionForecastDialog extends StatelessWidget {
             ),
             const Divider(color: Colors.white10),
 
-            SizedBox(
-              height: 300,
-              child: ListView.builder(
-                itemCount: forecastData.length,
-                itemBuilder: (context, index) {
-                  final item = forecastData[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: Row(
-                            children: [
-                              Icon(
-                                item['icon'],
-                                color: Colors.white70,
-                                size: 18,
+            // Yükleniyor veya Veri Listesi
+            _isLoading
+                ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(30),
+                    child: CircularProgressIndicator(color: AppColors.neonBlue),
+                  ),
+                )
+                : (_forecastData?.isEmpty ?? true)
+                ? const SizedBox(
+                  height: 300,
+                  child: Center(
+                    child: Text(
+                      "Veri Alınamadı veya Model Yüklenmedi.",
+                      style: TextStyle(color: Colors.white54),
+                    ),
+                  ),
+                )
+                : SizedBox(
+                  height: 300,
+                  child: ListView.builder(
+                    itemCount: _forecastData!.length,
+                    itemBuilder: (context, index) {
+                      final item = _forecastData![index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _getIconData(
+                                      item['iconName'],
+                                    ), // API'den gelen metin ikon
+                                    color: Colors.white70,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    item['time'],
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              Text(
-                                item['time'],
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: Text(
+                                item['value'],
                                 style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.neonGreen,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: Text(
-                            item['value'],
-                            style: const TextStyle(
-                              color: AppColors.neonGreen,
-                              fontWeight: FontWeight.bold,
                             ),
-                          ),
+                            Expanded(
+                              flex: 1,
+                              child: Text(
+                                item['efficiency'],
+                                style: const TextStyle(color: Colors.white),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ],
                         ),
-                        Expanded(
-                          flex: 1,
-                          child: Text(
-                            item['efficiency'],
-                            style: const TextStyle(color: Colors.white),
-                            textAlign: TextAlign.right,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
+                      );
+                    },
+                  ),
+                ),
+
             const SizedBox(height: 10),
             Center(
               child: TextButton.icon(
@@ -906,7 +1030,7 @@ class ProductionForecastDialog extends StatelessWidget {
   }
 }
 
-// 7. TÜKETİM DAĞILIMI DİYALOĞU
+// 7. TÜKETİM DAĞILIMI DİYALOĞU - DEĞİŞMEDİ
 class ConsumptionDistributionDialog extends StatelessWidget {
   const ConsumptionDistributionDialog({super.key});
 
