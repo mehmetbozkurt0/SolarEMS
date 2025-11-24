@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import '../widgets/glass_container.dart';
-import 'device_management_screen.dart'; // Yeni ekranı import ettik
+import 'device_management_screen.dart'; // Cihaz Yönetimi ekranı
+import 'notification_screen.dart'; // Bildirim ekranı
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -61,14 +62,27 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 30),
 
           // AYAR LİSTESİ
+
+          // 1. BİLDİRİMLER (İŞL: Geçmiş 1 haftayı göster)
           _buildSettingsTile(
             context,
             Icons.notifications,
             "Bildirimler",
-            "Tarife değişiklikleri ve anomali uyarıları",
-            true,
+            "Geçmiş bildirimler ve uyarılar",
+            false,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) =>
+                          const NotificationScreen(showOnlyUnread: false),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 15),
+
           _buildSettingsTile(
             context,
             Icons.attach_money,
@@ -78,7 +92,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 15),
 
-          // GÜNCELLENDİ: Cihaz Yönetimi navigasyonu eklendi
+          // 2. CİHAZ YÖNETİMİ (İŞL.13)
           _buildSettingsTile(
             context,
             Icons.devices,
@@ -127,7 +141,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  // GÜNCELLENDİ: onTap parametresi ve InkWell eklendi
+  // Helper: Settings Tile
   Widget _buildSettingsTile(
     BuildContext context,
     IconData icon,
@@ -137,10 +151,7 @@ class SettingsScreen extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     return InkWell(
-      onTap:
-          hasSwitch
-              ? null
-              : onTap, // Switch varsa tıklamayı devre dışı bırakabiliriz veya switch'e özel mantık kurabiliriz
+      onTap: hasSwitch ? null : onTap,
       borderRadius: BorderRadius.circular(24),
       child: GlassContainer(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
@@ -168,7 +179,7 @@ class SettingsScreen extends StatelessWidget {
                 value: true,
                 onChanged: (val) {},
                 activeColor: AppColors.neonGreen,
-                activeTrackColor: AppColors.neonGreen.withOpacity(0.3),
+                activeTrackColor: AppColors.neonGreen.withValues(alpha: 0.3),
               )
             else
               const Icon(Icons.chevron_right, color: Colors.white38),

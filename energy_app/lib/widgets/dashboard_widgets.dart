@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import 'glass_container.dart';
-// Analiz ekranındaki rapor listesine erişmek için import edildi
+// Ekranlar ve Servisler
 import '../screens/analysis_screen.dart';
+import '../screens/battery_analysis_screen.dart';
+import '../core/notification_service.dart';
+import '../screens/notification_screen.dart';
 
-// Kart Tipi Enum'u (Menü içeriklerini belirlemek için)
+// Kart Tipi Enum'u
 enum EnergyCardType { production, consumption, gridSale }
 
-// Zaman Periyodu Enum'u (Grafik ve filtreler için)
+// Zaman Periyodu Enum'u
 enum TimePeriod { daily, weekly, monthly }
 
 // 1. ÖZET KARTLARI (EnergyStatusCard)
@@ -29,11 +32,10 @@ class EnergyStatusCard extends StatelessWidget {
     required this.cardType,
   });
 
-  // Fonksiyonel Gereksinimlere dayalı menüyü oluşturur
+  // Menü Oluşturma
   Widget _buildPopupMenu(BuildContext context) {
     List<PopupMenuEntry<String>> menuItems;
 
-    // İŞL.04: ML Tahmini, İŞL.11: Anomali (Backend), İŞL.03: Rapor
     if (cardType == EnergyCardType.production) {
       menuItems = const [
         PopupMenuItem(
@@ -51,9 +53,7 @@ class EnergyStatusCard extends StatelessWidget {
           ),
         ),
       ];
-    }
-    // İŞL.13: Rapor, İŞL.08: Kıyaslama
-    else if (cardType == EnergyCardType.consumption) {
+    } else if (cardType == EnergyCardType.consumption) {
       menuItems = const [
         PopupMenuItem(
           value: 'consumption_distribution',
@@ -77,9 +77,7 @@ class EnergyStatusCard extends StatelessWidget {
           ),
         ),
       ];
-    }
-    // İŞL.02: Mahsuplaşma, İŞL.12: Optimizasyon Kazancı, İŞL.06: Batarya
-    else if (cardType == EnergyCardType.gridSale) {
+    } else if (cardType == EnergyCardType.gridSale) {
       menuItems = const [
         PopupMenuItem(
           value: 'net_metering',
@@ -127,7 +125,16 @@ class EnergyStatusCard extends StatelessWidget {
             builder: (context) => const ConsumptionDistributionDialog(),
           );
         }
-        // 3. TARİHSEL RAPOR OLUŞTURMA (Listeye Ekleme)
+        // 3. BATARYA YÖNETİMİ EKRANINA GİT
+        else if (result == 'battery_management') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const BatteryAnalysisScreen(),
+            ),
+          );
+        }
+        // 4. TARİHSEL RAPOR (Liste Ekleme)
         else if (result == 'historical_report') {
           AnalysisScreen.globalReports.insert(0, {
             'title': 'Manuel Oluşturulan Üretim Raporu',
@@ -135,7 +142,6 @@ class EnergyStatusCard extends StatelessWidget {
             'type': 'PDF',
             'size': '1.2 MB',
           });
-
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -146,27 +152,24 @@ class EnergyStatusCard extends StatelessWidget {
             ),
           );
         }
-        // 4. ENERJİ DENETİM RAPORU OLUŞTURMA (İŞL.13 - Listeye Ekleme) -- YENİ EKLENDİ
+        // 5. DENETİM RAPORU (Liste Ekleme)
         else if (result == 'audit_report') {
           AnalysisScreen.globalReports.insert(0, {
             'title': 'Enerji Verimlilik ve Denetim Raporu',
             'date': '${now.day}.${now.month}.${now.year}',
             'type': 'PDF',
-            'size': '2.8 MB', // Daha detaylı olduğu için boyutu büyük
+            'size': '2.8 MB',
           });
-
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
                 'Denetim raporu oluşturuldu ve "Analiz & Rapor" sekmesine eklendi.',
               ),
-              backgroundColor: AppColors.neonRed, // Tüketim/Denetim vurgusu
+              backgroundColor: AppColors.neonRed,
               duration: Duration(seconds: 2),
             ),
           );
-        }
-        // DİĞER SEÇENEKLER (Henüz yapılmayanlar)
-        else {
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -567,6 +570,9 @@ class HeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Servisten okunmamış sayısını al
+    final unreadCount = NotificationService().getUnreadNotifications().length;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -611,10 +617,56 @@ class HeaderSection extends StatelessWidget {
             ),
           ],
         ),
-        const CircleAvatar(
-          backgroundColor: Colors.white10,
-          radius: 24,
-          child: Icon(Icons.notifications_outlined, color: Colors.white),
+
+        // Bildirim Butonu (Stack ile Rozet Eklendi)
+        InkWell(
+          onTap: () {
+            // Dashboard'dan tıklandığı için SADECE OKUNMAMIŞLARI göster
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (context) => const NotificationScreen(showOnlyUnread: true),
+              ),
+            ).then((_) {
+              // Geri dönüldüğünde (okundu yapıldıysa) rebuild için (basit çözüm)
+              // Gerçekte state management gerektirir
+            });
+          },
+          borderRadius: BorderRadius.circular(50),
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(
+              color: Colors.white10,
+              shape: BoxShape.circle,
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Icon(Icons.notifications_outlined, color: Colors.white),
+
+                // Eğer okunmamış bildirim varsa Kırmızı Nokta göster
+                if (unreadCount > 0)
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: AppColors.neonRed,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.background,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -820,7 +872,7 @@ class ProductionForecastDialog extends StatelessWidget {
   }
 }
 
-// 7. TÜKETİM DAĞILIMI DİYALOĞU (İŞL.13)
+// 7. TÜKETİM DAĞILIMI DİYALOĞU
 class ConsumptionDistributionDialog extends StatelessWidget {
   const ConsumptionDistributionDialog({super.key});
 

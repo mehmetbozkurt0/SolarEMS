@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import '../widgets/glass_container.dart';
+import 'battery_analysis_screen.dart'; // Yeni ekranı import ettik
 
 // Analiz ve Raporlama ekranı için zaman periyodu enum'u
 enum AnalysisTimePeriod { daily, weekly, monthly }
@@ -8,8 +9,7 @@ enum AnalysisTimePeriod { daily, weekly, monthly }
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
 
-  // GÜNCELLEME: Rapor listesi 'static' yapıldı.
-  // Böylece Dashboard sayfasından buraya yeni rapor eklenebilir.
+  // Rapor listesi static referans
   static List<Map<String, String>> globalReports = [
     {
       'title': 'Ekim 2023 Üretim Raporu',
@@ -53,7 +53,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       Navigator.pop(context);
       setState(() {
         final now = DateTime.now();
-        // Listeye statik referans üzerinden erişiyoruz
         AnalysisScreen.globalReports.insert(0, {
           'title': 'Anlık Üretim Raporu (${now.hour}:${now.minute})',
           'date': '${now.day}.${now.month}.${now.year}',
@@ -71,7 +70,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     });
   }
 
-  // --- MOCK DATA FONKSİYONLARI ---
+  // --- MOCK DATA ---
   Map<String, List<String>> _getStatData() {
     switch (_selectedPeriod) {
       case AnalysisTimePeriod.daily:
@@ -126,7 +125,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     }
   }
 
-  // --- WIDGET YARDIMCI FONKSİYONLARI ---
   Widget _buildFilterButton(AnalysisTimePeriod period, String text) {
     bool isSelected = _selectedPeriod == period;
     return GestureDetector(
@@ -297,6 +295,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           ),
           const SizedBox(height: 20),
 
+          // Filtreler
           Row(
             children: [
               _buildFilterButton(AnalysisTimePeriod.daily, "Günlük"),
@@ -308,6 +307,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           ),
           const SizedBox(height: 30),
 
+          // İstatistikler
           if (isDesktop)
             Row(
               children: [
@@ -367,6 +367,66 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
           const SizedBox(height: 30),
 
+          // YENİ EKLENEN: BATARYA ANALİZ BUTONU
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BatteryAnalysisScreen(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(24),
+            child: GlassContainer(
+              padding: const EdgeInsets.all(20),
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.neonBlue.withValues(alpha: 0.1),
+                  AppColors.cardGradientEnd,
+                ],
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.battery_charging_full,
+                    color: AppColors.neonBlue,
+                    size: 30,
+                  ),
+                  SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Batarya Sistemleri & Sağlık",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          "3 Aktif Ünite • Doluluk Oranı %46",
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white38,
+                    size: 16,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
+          // Grafik
           GlassContainer(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -417,6 +477,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
           const SizedBox(height: 30),
 
+          // Raporlar
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -446,7 +507,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           ),
           const SizedBox(height: 15),
 
-          // GÜNCELLEME: Statik globalReports listesini kullanıyor
           GlassContainer(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -466,6 +526,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
           const SizedBox(height: 30),
 
+          // Sosyal Etki
           const Text(
             "Çevresel Etki & Başarılar",
             style: TextStyle(
