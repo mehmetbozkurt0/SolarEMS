@@ -3,6 +3,7 @@ import '../core/constants.dart';
 import '../widgets/glass_container.dart';
 import 'device_management_screen.dart'; // Cihaz Yönetimi ekranı
 import 'notification_screen.dart'; // Bildirim ekranı
+import 'tariff_info_screen.dart'; // YENİ: Tarife ekranı import edildi
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -63,7 +64,7 @@ class SettingsScreen extends StatelessWidget {
 
           // AYAR LİSTESİ
 
-          // 1. BİLDİRİMLER (İŞL: Geçmiş 1 haftayı göster)
+          // 1. BİLDİRİMLER
           _buildSettingsTile(
             context,
             Icons.notifications,
@@ -83,16 +84,26 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 15),
 
+          // 2. TARİFE BİLGİLERİ (GÜNCELLENDİ)
           _buildSettingsTile(
             context,
             Icons.attach_money,
             "Tarife Bilgileri",
             "Aktif tarife: Üç Zamanlı Mesken",
             false,
+            onTap: () {
+              // Yeni tarife ekranına yönlendirme
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TariffInfoScreen(),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 15),
 
-          // 2. CİHAZ YÖNETİMİ (İŞL.13)
+          // 3. CİHAZ YÖNETİMİ
           _buildSettingsTile(
             context,
             Icons.devices,
@@ -179,7 +190,7 @@ class SettingsScreen extends StatelessWidget {
                 value: true,
                 onChanged: (val) {},
                 activeColor: AppColors.neonGreen,
-                activeTrackColor: AppColors.neonGreen.withValues(alpha: 0.3),
+                activeTrackColor: AppColors.neonGreen.withOpacity(0.3),
               )
             else
               const Icon(Icons.chevron_right, color: Colors.white38),
