@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/constants.dart';
-import 'screens/main_layout.dart';
+import 'screens/login_screen.dart';
 
 void main() {
   runApp(const EnergyApp());
@@ -22,7 +22,7 @@ class EnergyApp extends StatelessWidget {
           headlineMedium: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
-      home: const MainLayout(),
+      home: const LoginScreen(),
     );
   }
 }

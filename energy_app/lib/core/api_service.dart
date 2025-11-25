@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Android Emulator için 10.0.2.2, iOS Simulator için 127.0.0.1,
-  // Gerçek cihaz için bilgisayarının yerel IP'si (örn: 192.168.1.x)
+  // Android Emulator için 10.0.2.2, iOS Simulator için 127.0.0.1
+  // Gerçek cihaz için bilgisayarının yerel IP'si (örn: 192.168.1.35)
   static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
 
   // 1. AI Recommendation Getir
@@ -13,6 +13,17 @@ class ApiService {
       return json.decode(response.body);
     } else {
       throw Exception('AI önerisi alınamadı');
+    }
+  }
+
+  // YENİ EKLENDİ: 1.1 AI Önerisini Uygula
+  Future<bool> applyRecommendation() async {
+    try {
+      final response = await http.post(Uri.parse('$baseUrl/ai/recommendation/apply'));
+      return response.statusCode == 200;
+    } catch (e) {
+      print("AI Apply Error: $e");
+      return false;
     }
   }
 

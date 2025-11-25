@@ -15,7 +15,6 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _selectedIndex = 0;
 
-  // Diğer sayfalar yapıldıkça buraya eklenecek
   final List<Widget> _screens = [
     const DashboardScreen(),
     const AnalysisScreen(),
@@ -30,20 +29,41 @@ class _MainLayoutState extends State<MainLayout> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: isDesktop ? null : AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        // LOGO TIKLAMA İŞLEVİ BURADA
+        title: GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedIndex = 0; // Ana sayfaya (Dashboard) dön
+            });
+          },
+          child: const Row(
+            children: [
+              Icon(Icons.wb_sunny, color: AppColors.neonBlue),
+              SizedBox(width: 8),
+              Text("Solar EMS", style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.notifications, color: Colors.white),
+          )
+        ],
+      ),
       body: Row(
         children: [
-          // WEB: Sidebar Menü
           if (isDesktop)
             _GlassSidebar(
               selectedIndex: _selectedIndex,
               onItemSelected: (index) => setState(() => _selectedIndex = index),
             ),
-
-          // ANA İÇERİK (Arkaplan Süslemeli)
           Expanded(
             child: Stack(
               children: [
-                // Arkaplan Gradient Süslemeleri
                 Positioned(
                   top: -100, right: -100,
                   child: Container(
@@ -66,8 +86,6 @@ class _MainLayoutState extends State<MainLayout> {
                     ),
                   ),
                 ),
-
-                // Sayfa İçeriği
                 Padding(
                   padding: EdgeInsets.all(isDesktop ? 32.0 : 16.0),
                   child: _screens[_selectedIndex],
@@ -77,7 +95,6 @@ class _MainLayoutState extends State<MainLayout> {
           ),
         ],
       ),
-      // MOBİL: Bottom Navigation Bar
       bottomNavigationBar: isDesktop
           ? null
           : _GlassBottomBar(
@@ -88,7 +105,6 @@ class _MainLayoutState extends State<MainLayout> {
   }
 }
 
-// Sidebar ve BottomBar bu dosyaya özel (private) kalabilir
 class _GlassSidebar extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onItemSelected;

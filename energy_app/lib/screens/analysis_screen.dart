@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import '../widgets/glass_container.dart';
-import 'battery_analysis_screen.dart';
 import '../core/api_service.dart'; // ApiService'i ekle
 
 // Analiz ve Raporlama ekranı için zaman periyodu enum'u
