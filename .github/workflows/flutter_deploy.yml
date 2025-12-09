@@ -1,36 +1,37 @@
-name: Flutter Web Deploy
+name: Deploy Flutter Web
 
 on:
   push:
     branches:
-      - main  # Senin ana dalının ismi (main veya master ise burayı düzelt)
+      - main  # Senin ana dalın 'master' ise burayı 'master' yap!
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Kodu Çek
         uses: actions/checkout@v3
 
-      - name: Flutter Kurulumu
+      - name: Flutter Kur
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          
+
       - name: Bağımlılıkları Yükle
         run: |
           cd energy_app
           flutter pub get
 
-      - name: Web İçin Derle (Build)
+      - name: Web İçin Derle
+        # BURASI ÖNEMLİ: Repo ismin SolarEMS değilse tırnak içini değiştir
         run: |
           cd energy_app
           flutter build web --release --base-href "/SolarEMS/"
 
-      - name: Yayınla (Deploy)
+      - name: GitHub Pages'e Gönder
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
