@@ -29,7 +29,7 @@ jobs:
         # BURASI ÖNEMLİ: Repo ismin SolarEMS değilse tırnak içini değiştir
         run: |
           cd energy_app
-          flutter build web --release --base-href "/SolarEMS/"
+          flutter build web --release --base-href "/SolarEMS/" --no-tree-shake-icons
 
       - name: GitHub Pages'e Gönder
         uses: peaceiris/actions-gh-pages@v3
